@@ -1,22 +1,50 @@
 application mpodder
 
 import mobl::yql
+import mobl::media
 import ui
 
 type Podcast {
   website               : String
   mygpo_link            : String
   description           : String
-  subscribers           : String
+  subs           : String
   title                 : String
   url                   : String
   subscribers_last_week : String
   logo_url              : String
+
+  function fetchEpisodes() : Collection<Episode> {
+    var episodes = YQL.query("select * from feednormalizer where url='" + this.url + "' and output='atom_1.0'").feed.entry;
+    var results = Collection<Episode>();
+    foreach(e in episodes) {
+      var ep = Episode(title=e.title);
+      //log(e);
+      if(e.link.href) {
+        ep.downloadUrl = e.link.href;
+      } else if(e.link.length) {
+        ep.downloadUrl = e.link.get(e.link.length-1).href;
+      }
+      results.add(ep);
+    }
+    return results;
+  }
+}
+
+type Episode {
+  title       : String
+  downloadUrl : String
 }
 
 function fetch(query : String) : Collection<Podcast> {
   var resource = YQL.query("select * from json where url='http://gpodder.net/search.json?q=" + query + "'");
-  return resource ? resource.json.json : Collection<Podcast>();
+  var ps = Collection<Podcast>();
+  if(resource) {
+    foreach(pc in resource.json.json) {
+      ps.add(Podcast(website=pc.website, mygpo_link=pc.mygpo_link, description=pc.description, subs=pc.subscribers, title=pc.title, url=pc.url, subscribers_last_week=pc.subscribers_last_week, logo_url=pc.logo_url));
+    }
+  }
+  return ps;
 }
 
 function blank(target : String) : Bool {
@@ -25,10 +53,46 @@ function blank(target : String) : Bool {
 
 control podcastDetail(podcast : Podcast) {
   block {
-    item { image(podcast.logo_url) }
+    item { image(podcast.logo_url, width=120) }
     item { label(blank(podcast.title) ? "N/A" : podcast.title) }
     item { label(blank(podcast.description) ? "N/A" : podcast.description) }
     item { link(blank(podcast.website) ? "N/A" : podcast.website) }
+  }
+  <h2>"Episodes"</h2>
+  group {
+    list(ep in podcast.fetchEpisodes()) {
+      item(onclick={ listen(ep); }) { label(ep.title) }
+    }
+  }
+}
+
+function prettyPlayTime(s : Num) : String {
+  var mins = Math.floor(s / 60);
+  var secs = Math.floor(s % 60);
+  return ""+mins+":" + secs;
+}
+
+screen listen(ep : Episode) {
+  var audio = Audio.load(ep.downloadUrl)
+  header(ep.title) {
+    backButton(onclick={
+      audio.destroy();
+      screen return;
+    })
+  }
+  link(ep.downloadUrl)
+  when(Audio.canPlayMp3()) {
+    block {
+      label(prettyPlayTime(audio.currentTime))
+    }
+    block {
+      button("Play", onclick={
+        audio.play();
+      })
+      button("Pause", onclick={
+        audio.pause();
+      })
+    }
   }
 }
 
@@ -37,7 +101,7 @@ control podcastItem(podcast : Podcast) {
 }
 
 screen root() {
-  var query = "jazz"
+  var query = "tech"
   var podcasts = async(fetch(query))
 
   header("mPodder")

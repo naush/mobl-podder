@@ -1,0 +1,54 @@
+application mpodder
+
+import mobl::yql
+import ui
+
+type Podcast {
+  website               : String
+  mygpo_link            : String
+  description           : String
+  subscribers           : String
+  title                 : String
+  url                   : String
+  subscribers_last_week : String
+  logo_url              : String
+}
+
+function fetch(query : String) : Collection<Podcast> {
+	var resource = YQL.query("select * from json where url='http://gpodder.net/search.json?q=" + query + "'");
+  return resource.json.json;
+}
+
+function blank(target : String) : Bool {
+  return target == null || target.length == 0;
+}
+
+control podcastDetail(podcast : Podcast) {
+  block {
+    item { image(podcast.logo_url) }
+    item { label(blank(podcast.title) ? "N/A" : podcast.title) }
+    item { label(blank(podcast.description) ? "N/A" : podcast.description) }
+    item { link(blank(podcast.website) ? "N/A" : podcast.website) }
+  }
+}
+
+control podcastItem(podcast : Podcast) {
+  item {
+    label(podcast.title.length == 0 ? "N/A" : podcast.title)
+  }
+}
+
+screen root() {
+	var query = "jazz"
+  var podcasts = async(fetch(query))
+
+  header("mPodder")
+
+  searchBox(query, onsearch={
+    podcasts = fetch(query);
+  })
+
+  whenLoaded(podcasts) {
+    masterDetail(podcasts, podcastItem, podcastDetail)
+  }
+}

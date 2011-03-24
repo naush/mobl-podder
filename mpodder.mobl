@@ -16,7 +16,7 @@ type Podcast {
 
 function fetch(query : String) : Collection<Podcast> {
   var resource = YQL.query("select * from json where url='http://gpodder.net/search.json?q=" + query + "'");
-  return resource.json.json;
+  return resource ? resource.json.json : Collection<Podcast>();
 }
 
 function blank(target : String) : Bool {
@@ -33,9 +33,7 @@ control podcastDetail(podcast : Podcast) {
 }
 
 control podcastItem(podcast : Podcast) {
-  item {
-    label(podcast.title.length == 0 ? "N/A" : podcast.title)
-  }
+  label(podcast.title.length == 0 ? "N/A" : podcast.title)
 }
 
 screen root() {
@@ -45,7 +43,9 @@ screen root() {
   header("mPodder")
 
   searchBox(query, onsearch={
+    startLoading();
     podcasts = fetch(query);
+    endLoading();
   })
 
   whenLoaded(podcasts) {

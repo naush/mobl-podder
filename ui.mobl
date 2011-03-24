@@ -2,4 +2,4 @@ module ui
 
 mixin mobl::ui::generic
 
-style $baseColor = rgb(0, 0, 0)
+style $baseColor = rgb(100, 100, 100)

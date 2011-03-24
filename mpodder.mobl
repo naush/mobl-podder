@@ -15,7 +15,7 @@ type Podcast {
 }
 
 function fetch(query : String) : Collection<Podcast> {
-	var resource = YQL.query("select * from json where url='http://gpodder.net/search.json?q=" + query + "'");
+  var resource = YQL.query("select * from json where url='http://gpodder.net/search.json?q=" + query + "'");
   return resource.json.json;
 }
 
@@ -39,7 +39,7 @@ control podcastItem(podcast : Podcast) {
 }
 
 screen root() {
-	var query = "jazz"
+  var query = "jazz"
   var podcasts = async(fetch(query))
 
   header("mPodder")

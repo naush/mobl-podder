@@ -538,3 +538,8 @@
 .ui__trStyle .ui__tdStyle:last-child {
   border-right: 1px solid #000;
 }
+.ui__boldItemStyle {
+  width: 150px;
+  position: absolute;
+  left: 50%;
+}

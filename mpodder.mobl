@@ -8,26 +8,26 @@ type Podcast {
   website               : String
   mygpo_link            : String
   description           : String
-  subs           : String
+  subs                  : String
   title                 : String
   url                   : String
   subscribers_last_week : String
   logo_url              : String
 
   function fetchEpisodes() : Collection<Episode> {
-    var episodes = YQL.query("select * from feednormalizer where url='" + this.url + "' and output='atom_1.0'").feed.entry;
-    var results = Collection<Episode>();
-    foreach(e in episodes) {
-      var ep = Episode(title=e.title);
-      //log(e);
-      if(e.link.href) {
-        ep.downloadUrl = e.link.href;
-      } else if(e.link.length) {
-        ep.downloadUrl = e.link.get(e.link.length-1).href;
+    var results = YQL.query("select * from feednormalizer where url='" + this.url + "' and output='atom_1.0'").feed.entry;
+    var episodes = Collection<Episode>();
+    foreach (result in results) {
+      var episode = Episode(title=result.title);
+      // log(result);
+      if (result.link.href) {
+        episode.downloadUrl = result.link.href;
+      } else if (result.link.length) {
+        episode.downloadUrl = result.link.get(result.link.length-1).href;
       }
-      results.add(ep);
+      episodes.add(episode);
     }
-    return results;
+    return episodes;
   }
 }
 
@@ -38,13 +38,21 @@ type Episode {
 
 function fetch(query : String) : Collection<Podcast> {
   var resource = YQL.query("select * from json where url='http://gpodder.net/search.json?q=" + query + "'");
-  var ps = Collection<Podcast>();
-  if(resource) {
-    foreach(pc in resource.json.json) {
-      ps.add(Podcast(website=pc.website, mygpo_link=pc.mygpo_link, description=pc.description, subs=pc.subscribers, title=pc.title, url=pc.url, subscribers_last_week=pc.subscribers_last_week, logo_url=pc.logo_url));
+  var podcasts = Collection<Podcast>();
+  if (resource) {
+    foreach(podcast in resource.json.json) {
+      podcasts.add(
+        Podcast(website = podcast.website,
+                mygpo_link = podcast.mygpo_link,
+                description = podcast.description,
+                subs = podcast.subscribers,
+                title = podcast.title,
+                url = podcast.url,
+                subscribers_last_week = podcast.subscribers_last_week,
+                logo_url = podcast.logo_url));
     }
   }
-  return ps;
+  return podcasts;
 }
 
 function blank(target : String) : Bool {
@@ -58,40 +66,47 @@ control podcastDetail(podcast : Podcast) {
     item { label(blank(podcast.description) ? "N/A" : podcast.description) }
     item { link(blank(podcast.website) ? "N/A" : podcast.website) }
   }
-  <h2>"Episodes"</h2>
-  group {
-    list(ep in podcast.fetchEpisodes()) {
-      item(onclick={ listen(ep); }) { label(ep.title) }
+  block {
+    header("Episodes")
+    list(episode in podcast.fetchEpisodes()) {
+      item(onclick={ listen(episode); }) { label(episode.title) }
     }
   }
 }
 
-function prettyPlayTime(s : Num) : String {
-  var mins = Math.floor(s / 60);
-  var secs = Math.floor(s % 60);
-  return ""+mins+":" + secs;
+function parseTime(time : Num) : String {
+  var mins = Math.floor(time / 60);
+  var secs = Math.floor(time % 60);
+  return "" + mins + ":" + secs;
 }
 
-screen listen(ep : Episode) {
-  var audio = Audio.load(ep.downloadUrl)
-  header(ep.title) {
+function prettyPlayTime(current : Num, duration : Num) : String {
+  return parseTime(current) + " (" + parseTime(duration) + ")";
+}
+
+screen listen(episode : Episode) {
+  var audio = async(Audio.load(episode.downloadUrl))
+  header(episode.title) {
     backButton(onclick={
+      audio.pause();
       audio.destroy();
       screen return;
     })
   }
-  link(ep.downloadUrl)
-  when(Audio.canPlayMp3()) {
-    block {
-      label(prettyPlayTime(audio.currentTime))
-    }
-    block {
-      button("Play", onclick={
-        audio.play();
-      })
-      button("Pause", onclick={
-        audio.pause();
-      })
+  block {
+    item { link(episode.downloadUrl) }
+    when(Audio.canPlayMp3()) {
+      item {
+        label(prettyPlayTime(audio.currentTime, audio.getDuration()))
+      }
+      item {
+        button("Play", onclick={
+          audio.play();
+        })
+        button("Pause", onclick={
+          audio.pause();
+        })
+      }
     }
   }
 }
@@ -101,7 +116,7 @@ control podcastItem(podcast : Podcast) {
 }
 
 screen root() {
-  var query = "tech"
+  var query = "jazz"
   var podcasts = async(fetch(query))
 
   header("mPodder")

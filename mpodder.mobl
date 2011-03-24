@@ -85,7 +85,7 @@ function prettyPlayTime(current : Num, duration : Num) : String {
 }
 
 screen listen(episode : Episode) {
-  var audio = async(Audio.load(episode.downloadUrl))
+  var audio = Audio.load(episode.downloadUrl)
   header(episode.title) {
     backButton(onclick={
       audio.pause();
